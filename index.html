@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Worldbook</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg-page:        #0f0e10;
+    --bg-card:        #19171a;
+    --bg-input:       #1e1a1c;
+    --bg-hover:       #241f22;
+    --bg-active:      #2a2226;
+    --border:         #3d2529;
+    --border-strong:  #5c3238;
+    --text-primary:   #ece8e9;
+    --text-secondary: #a39799;
+    --text-tertiary:  #6e6669;
+    --accent-bg:      #2e1518;
+    --accent-text:    #e2828d;
+    --accent-border:  #5c2b32;
+    --ok-bg:          #16241a;
+    --ok-text:        #7cc16a;
+    --err-bg:         #2e1518;
+    --err-text:       #e2828d;
+    --warn-bg:        #2b2116;
+    --warn-text:      #e0b25c;
+    --lock-color:     #d9707c;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg-page); color:var(--text-primary);
+    min-height:100vh; padding:2rem;
+  }
+  .wrap{ width:100%; max-width:none; margin:0; }
+  .wrap.narrow{ max-width:520px; margin:0 auto; }
+  .card{
+    background:var(--bg-card); border:0.5px solid var(--border);
+    border-radius:14px; padding:2rem;
+  }
+  h1{font-size:19px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  h1 i{color:var(--lock-color);}
+  .subtitle{font-size:13px;color:var(--text-secondary);margin-bottom:1.5rem;}
+  .divider{height:0.5px;background:var(--border);margin:1.25rem 0;}
+  label{font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;}
+  input[type=text],input[type=email],input[type=password]{
+    width:100%; padding:10px 12px; border:0.5px solid var(--border-strong);
+    border-radius:8px; background:var(--bg-input); color:var(--text-primary);
+    font-size:14px; font-family:inherit; margin-bottom:12px;
+  }
+  input:focus{outline:none;border-color:var(--accent-border);box-shadow:0 0 0 3px rgba(226,130,141,0.12);}
+  textarea{
+    width:100%; min-height:260px; resize:vertical; padding:14px;
+    border:0.5px solid var(--border-strong); border-radius:8px;
+    background:var(--bg-input); color:var(--text-primary);
+    font-size:14px; font-family:inherit; line-height:1.7;
+  }
+  .btn{
+    padding:9px 14px; border:0.5px solid var(--border-strong); border-radius:8px;
+    background:var(--bg-input); color:var(--text-primary); cursor:pointer;
+    font-size:13px; display:inline-flex; align-items:center; gap:6px;
+    transition:background .12s; font-family:inherit;
+  }
+  .btn:hover{background:var(--bg-hover);}
+  .btn.primary{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent-border);}
+  .btn.primary:hover{opacity:.88;}
+  .btn.block{width:100%; justify-content:center; margin-bottom:10px;}
+  .btn.small{padding:5px 10px;font-size:12px;}
+  .row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .muted{color:var(--text-tertiary); font-size:12px;}
+  .link-btn{background:none;border:none;color:var(--accent-text);cursor:pointer;font-size:13px;text-decoration:underline;padding:0;}
+  .badge{padding:3px 9px;border-radius:99px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:4px;}
+  .badge-ok{background:var(--ok-bg);color:var(--ok-text);}
+  .badge-err{background:var(--err-bg);color:var(--err-text);}
+  .badge-warn{background:var(--warn-bg);color:var(--warn-text);}
+  .status{min-height:24px;font-size:13px;margin-top:8px;}
+
+  .breadcrumb{font-size:13px;color:var(--text-secondary);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .breadcrumb .crumb{cursor:pointer;color:var(--accent-text);}
+  .breadcrumb .sep{color:var(--border-strong);}
+
+  /* App shell: icon sidebar + bordered navigation panel */
+  #screenApp{ height:calc(100vh - 4rem); display:flex; flex-direction:column; }
+  .app-shell{ display:flex; gap:14px; align-items:stretch; flex:1; min-height:0; }
+  .app-sidebar{
+    width:52px; flex-shrink:0; display:flex; flex-direction:column;
+    justify-content:space-between; align-items:center;
+  }
+  .sidebar-group{ display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .sidebar-divider{ width:28px; height:0.5px; background:var(--border); margin:6px 0; }
+  .side-btn{
+    width:40px; height:40px; border:0.5px solid var(--border); border-radius:9px;
+    background:var(--bg-input); color:var(--text-secondary); font-size:16px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background .12s, color .12s;
+  }
+  .side-btn:hover{ background:var(--bg-hover); color:var(--text-primary); }
+  .side-btn:disabled{ opacity:.3; cursor:default; }
+  .side-btn:disabled:hover{ background:var(--bg-input); color:var(--text-secondary); }
+  .app-main{
+    flex:1; min-width:0; border:0.5px solid var(--border); border-radius:12px; padding:14px 16px;
+    overflow-y:auto;
+  }
+
+  /* Tree — grid of icon-on-top tiles, like a desktop file explorer */
+  #treeList{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(92px, 1fr));
+    gap:4px;
+  }
+  .node-item{
+    position:relative;
+    border:0.5px solid transparent; border-radius:10px; padding:12px 6px 10px;
+    font-size:12px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px;
+    transition:background .3s ease, border-color .3s ease;
+  }
+  .node-item:hover{background:var(--bg-hover); border-color:var(--border);}
+  .node-item.highlight{
+    background:var(--accent-bg); border-color:var(--accent-border);
+    transition:background .35s ease, border-color .35s ease;
+  }
+  .node-item .n-icon{color:var(--text-secondary); font-size:30px; flex-shrink:0;}
+  .node-item .n-icon.folder{color:var(--accent-text);}
+  .node-item .n-name{
+    width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    line-height:1.3; word-break:break-word;
+    border-radius:4px; transition:background .35s ease, color .35s ease;
+  }
+  .node-item .n-name.highlight-text{
+    background:var(--accent-bg); color:var(--accent-text); box-decoration-break:clone;
+  }
+  .node-item .n-lock{
+    position:absolute; top:8px; right:16px; color:var(--lock-color); font-size:12px;
+    background:var(--bg-page); border-radius:50%; padding:2px;
+  }
+  .node-item .n-actions{
+    position:absolute; top:4px; left:4px; display:none; gap:2px;
+    background:var(--bg-card); border:0.5px solid var(--border); border-radius:6px; padding:2px;
+  }
+  .node-item:hover .n-actions{display:flex;}
+  .n-action{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:5px;color:var(--text-secondary);font-size:12px;}
+  .n-action:hover{background:var(--bg-active);color:var(--text-primary);}
+
+  /* Viewer */
+  .viewer{border-top:0.5px solid var(--border); margin-top:16px; padding-top:16px;}
+  .viewer-title{font-size:16px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .viewer-body{font-size:14px;line-height:1.8;white-space:pre-wrap;}
+  .wiki-link{color:var(--accent-text);cursor:pointer;border-bottom:1px dashed var(--accent-border);}
+  .wiki-link.redlink{color:var(--lock-color);border-bottom-style:dotted;}
+  .wiki-link.locked{color:var(--lock-color);}
+  .backlinks{margin-top:16px;font-size:12px;color:var(--text-secondary);}
+  .backlinks .bl-item{color:var(--accent-text);cursor:pointer;margin-right:10px;}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal-box{
+    background:var(--bg-card); border:0.5px solid var(--border-strong);
+    border-radius:12px; padding:1.75rem; width:100%; max-width:420px;
+  }
+  .modal-box-lg{
+    max-width:720px; max-height:85vh; overflow-y:auto;
+  }
+  .lock-icon-big{font-size:28px;color:var(--lock-color);margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<div class="wrap narrow" id="wrap">
+
+  <!-- ============ SCREEN 1: AUTH ============ -->
+  <div class="card screen" id="screenAuth">
+    <h1><i class="ti ti-shield-lock"></i> Worldbook</h1>
+    <p class="subtitle" id="authSubtitle">Sign in to your account.</p>
+
+    <label for="authEmail">Email</label>
+    <input type="email" id="authEmail" autocomplete="username" />
+    <label for="authPassword">Password</label>
+    <input type="password" id="authPassword" autocomplete="current-password" />
+
+    <button class="btn primary block" id="btnAuthSubmit" onclick="handleAuthSubmit()">
+      <i class="ti ti-login"></i> Sign in
+    </button>
+    <p style="font-size:13px;text-align:center;">
+      <span id="authToggleText">Don't have an account?</span>
+      <button class="link-btn" id="btnAuthToggle" onclick="toggleAuthMode()">Sign up</button>
+    </p>
+    <div class="status" id="authStatus"></div>
+  </div>
+
+  <!-- ============ SCREEN 2: KEY SETUP ============ -->
+  <div class="card screen" id="screenKeys" style="display:none;">
+    <h1><i class="ti ti-key"></i> Worldbook</h1>
+    <p class="subtitle" id="keysSubtitle">Setting up your keys…</p>
+    <div id="keyStepArea"></div>
+    <div class="status" id="keysStatus"></div>
+  </div>
+
+  <!-- ============ SCREEN 3: APP ============ -->
+  <div class="card screen" id="screenApp" style="display:none;">
+    <div class="app-shell">
+      <div class="app-sidebar">
+        <div class="sidebar-group">
+          <button class="side-btn" id="navBackBtn" title="Back" onclick="goBack()"><i class="ti ti-chevron-left"></i></button>
+          <button class="side-btn" id="navForwardBtn" title="Forward" onclick="goForward()"><i class="ti ti-chevron-right"></i></button>
+          <div class="sidebar-divider"></div>
+          <button class="side-btn" title="Search" onclick="openSearchModal()"><i class="ti ti-search"></i></button>
+          <button class="side-btn" title="New folder" onclick="promptCreate('folder')"><i class="ti ti-folder-plus"></i></button>
+          <button class="side-btn" title="New file" onclick="promptCreate('file')"><i class="ti ti-file-plus"></i></button>
+          <button class="side-btn" title="Lock this folder" onclick="promptLockCurrentFolder()"><i class="ti ti-lock"></i></button>
+        </div>
+        <button class="side-btn" title="Sign out" onclick="signOut()"><i class="ti ti-logout"></i></button>
+      </div>
+      <div class="app-main">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <div id="treeList"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────
+// Supabase client — reuse your project, once the schema.sql tables exist in it
+// ─────────────────────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://orehrnvhgnigzbpprnvu.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yZWhybnZoZ25pZ3picHBybnZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzg3MzcsImV4cCI6MjA5Njg1NDczN30.oK4eiWp9CHCoeNVw2pR7h1zTjwKiykrS3Z8vWL9dKGQ';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const VERIFY_STRING = 'WORLDBOOK_KEY_OK_V1';
+
+// ─── App state ──────────────────────────────────────────────────────────────
+let authMode = 'signin'; // 'signin' | 'signup'
+let currentUser = null;
+let navKey = null;         // CryptoKey — decrypts every title
+let mainKey = null;        // CryptoKey — decrypts content for key_slot_id === null
+let unlockedSlots = {};    // { [key_slot_id]: CryptoKey }
+let keySlotsCache = [];    // rows from key_slots
+let allNodes = [];         // decrypted-title node cache: {id,parent_id,type,name,key_slot_id,content_cipher,sort_order}
+let allLinks = [];         // rows from links
+let currentFolderId = null;
+let navHistory = [null];   // stack of folder ids visited, root = null
+let navIndex = 0;          // pointer into navHistory
+let openNodeId = null;
+let highlightNodeId = null;   // node whose tile should show the "just navigated here" highlight
+let isNewAccount = false;
+let keyStep = 'nav';       // 'nav' | 'main'
+let pendingNavVerifier = null;
+let pendingMainVerifier = null;
+
+// ─── Small helpers ──────────────────────────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+function show(id){ $(id).style.display = ''; }
+function hide(id){ $(id).style.display = 'none'; }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+function b64(bytes){ return btoa(String.fromCharCode(...bytes)); }
+function fromB64(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
+function setStatus(id, html){ $(id).innerHTML = html; }
+function ok(msg){ return `<span class="badge badge-ok"><i class="ti ti-check"></i> ${msg}</span>`; }
+function err(msg){ return `<span class="badge badge-err"><i class="ti ti-x"></i> ${msg}</span>`; }
+function warn(msg){ return `<span class="badge badge-warn"><i class="ti ti-alert-triangle"></i> ${msg}</span>`; }
+
+// ─── Crypto helpers ─────────────────────────────────────────────────────────
+async function genKey(){
+  return crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+}
+async function importKeyFromFile(file){
+  const b64Key = (await file.text()).trim();
+  const raw = fromB64(b64Key);
+  return crypto.subtle.importKey('raw', raw, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function downloadKey(cryptoKey, filename){
+  const raw = await crypto.subtle.exportKey('raw', cryptoKey);
+  const asB64 = b64(new Uint8Array(raw));
+  const blob = new Blob([asB64], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+async function encryptWith(cryptoKey, plaintext){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM', iv}, cryptoKey, encoded);
+  return { iv: b64(iv), data: b64(new Uint8Array(ciphertext)) };
+}
+async function decryptWith(cryptoKey, obj){
+  const iv = fromB64(obj.iv);
+  const data = fromB64(obj.data);
+  const plain = await crypto.subtle.decrypt({name:'AES-GCM', iv}, cryptoKey, data);
+  return new TextDecoder().decode(plain);
+}
+async function makeVerifier(cryptoKey){ return encryptWith(cryptoKey, VERIFY_STRING); }
+async function checkVerifier(cryptoKey, verifierObj){
+  try {
+    const text = await decryptWith(cryptoKey, verifierObj);
+    return text === VERIFY_STRING;
+  } catch { return false; }
+}
+
+// ─── Generic modal (used for unlocking a vault mid-session) ────────────────
+function closeModal(){ $('modalRoot').innerHTML = ''; }
+function askForKeyFile(title, subtitle){
+  return new Promise((resolve, reject) => {
+    $('modalRoot').innerHTML = `
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <div class="lock-icon-big"><i class="ti ti-lock"></i></div>
+          <h1>${escapeHtml(title)}</h1>
+          <p class="subtitle">${escapeHtml(subtitle)}</p>
+          <input type="file" id="modalKeyFile" accept=".txt" />
+          <div class="row" style="margin-top:14px;">
+            <button class="btn primary" id="modalUnlockBtn"><i class="ti ti-key"></i> Unlock</button>
+            <button class="btn" id="modalCancelBtn">Cancel</button>
+          </div>
+          <div class="status" id="modalStatus"></div>
+        </div>
+      </div>`;
+    $('modalCancelBtn').onclick = () => { closeModal(); reject(new Error('cancelled')); };
+    $('modalUnlockBtn').onclick = () => {
+      const f = $('modalKeyFile').files[0];
+      if (!f) { setStatus('modalStatus', err('Choose a key file first.')); return; }
+      closeModal();
+      resolve(f);
+    };
+  });
+}
+
+// ─── Auth screen ────────────────────────────────────────────────────────────
+function toggleAuthMode(){
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  $('btnAuthSubmit').innerHTML = authMode === 'signin'
+    ? '<i class="ti ti-login"></i> Sign in'
+    : '<i class="ti ti-user-plus"></i> Create account';
+  $('authToggleText').textContent = authMode === 'signin' ? "Don't have an account?" : 'Already have an account?';
+  $('btnAuthToggle').textContent = authMode === 'signin' ? 'Sign up' : 'Sign in';
+  $('authSubtitle').textContent = authMode === 'signin' ? 'Sign in to your account.' : 'Create a new account.';
+}
+async function handleAuthSubmit(){
+  const email = $('authEmail').value.trim();
+  const password = $('authPassword').value;
+  if (!email || !password) { setStatus('authStatus', warn('Enter an email and password.')); return; }
+
+  setStatus('authStatus', '<span class="badge badge-warn"><i class="ti ti-loader"></i> Working…</span>');
+  try {
+    if (authMode === 'signup') {
+      const { data, error } = await db.auth.signUp({ email, password });
+      if (error) throw error;
+      if (!data.session) {
+        setStatus('authStatus', ok('Account created — check your email to confirm, then sign in.'));
+        return;
+      }
+      currentUser = data.user;
+    } else {
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      currentUser = data.user;
+    }
+    await afterSignIn();
+  } catch (e) {
+    setStatus('authStatus', err(e.message));
+  }
+}
+async function signOut(){
+  await db.auth.signOut();
+  currentUser = null; navKey = null; mainKey = null; unlockedSlots = {};
+  allNodes = []; allLinks = []; keySlotsCache = [];
+  currentFolderId = null; navHistory = [null]; navIndex = 0; openNodeId = null;
+  hide('screenApp'); hide('screenKeys'); show('screenAuth');
+  $('wrap').classList.add('narrow');
+}
+
+// ─── Key setup screen ───────────────────────────────────────────────────────
+async function afterSignIn(){
+  hide('screenAuth');
+  const { data, error } = await db
+    .from('account_security')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  if (error) { setStatus('authStatus', err(error.message)); show('screenAuth'); return; }
+
+  isNewAccount = !data;
+  keyStep = 'nav';
+  show('screenKeys');
+  $('keysSubtitle').textContent = isNewAccount
+    ? "First time here — let's generate your keys."
+    : 'Load your keys to continue.';
+  renderKeyStep(data);
+}
+
+function renderKeyStep(existingSecurity){
+  const area = $('keyStepArea');
+  const isNav = keyStep === 'nav';
+  const label = isNav ? 'Navigation Key' : 'Main Body Key';
+  const explain = isNav
+    ? 'Unlocks every folder and file name across your whole account.'
+    : 'Unlocks the written content of everything that isn\'t under a separate locked section.';
+
+  if (isNewAccount) {
+    area.innerHTML = `
+      <p style="font-size:13px;margin-bottom:10px;"><strong>${label}</strong> — ${explain}</p>
+      <p class="muted" style="margin-bottom:14px;">Generating downloads a key file. There is no password reset for this — keep the file somewhere safe. Losing it means losing access to whatever it unlocks, permanently.</p>
+      <button class="btn primary block" id="genBtn"><i class="ti ti-key"></i> Generate ${label}</button>
+    `;
+    $('genBtn').onclick = async () => {
+      try {
+        const key = await genKey();
+        await downloadKey(key, (isNav ? 'navigation-key' : 'main-body-key') + '.txt');
+        const verifier = await makeVerifier(key);
+        if (isNav) { navKey = key; pendingNavVerifier = verifier; keyStep = 'main'; }
+        else { mainKey = key; pendingMainVerifier = verifier; await finishKeySetupNew(); return; }
+        renderKeyStep(existingSecurity);
+      } catch (e) { setStatus('keysStatus', err(e.message)); }
+    };
+  } else {
+    area.innerHTML = `
+      <p style="font-size:13px;margin-bottom:10px;"><strong>${label}</strong> — ${explain}</p>
+      <input type="file" id="keyFileInput" accept=".txt" style="margin-bottom:10px;" />
+      <button class="btn primary block" id="loadBtn"><i class="ti ti-upload"></i> Load ${label}</button>
+    `;
+    $('loadBtn').onclick = async () => {
+      const f = $('keyFileInput').files[0];
+      if (!f) { setStatus('keysStatus', warn('Choose a key file first.')); return; }
+      try {
+        const key = await importKeyFromFile(f);
+        const verifierObj = isNav ? existingSecurity.nav_key_verifier : existingSecurity.main_key_verifier;
+        const good = await checkVerifier(key, verifierObj);
+        if (!good) { setStatus('keysStatus', err('That key file doesn\'t match — wrong file.')); return; }
+        if (isNav) { navKey = key; keyStep = 'main'; renderKeyStep(existingSecurity); }
+        else { mainKey = key; await loadApp(); }
+      } catch (e) { setStatus('keysStatus', err(e.message)); }
+    };
+  }
+}
+
+async function finishKeySetupNew(){
+  const { error } = await db.from('account_security').insert({
+    user_id: currentUser.id,
+    nav_key_verifier: pendingNavVerifier,
+    main_key_verifier: pendingMainVerifier
+  });
+  if (error) { setStatus('keysStatus', err(error.message)); return; }
+  await loadApp();
+}
+
+// ─── Loading the tree ───────────────────────────────────────────────────────
+async function loadApp(){
+  hide('screenKeys');
+  show('screenApp');
+  $('wrap').classList.remove('narrow');
+  await refreshEverything();
+  currentFolderId = null;
+  renderTree();
+}
+
+async function refreshEverything(){
+  const [{ data: nodeRows, error: nErr }, { data: slotRows, error: sErr }, { data: linkRows, error: lErr }] =
+    await Promise.all([
+      db.from('nodes').select('*').eq('user_id', currentUser.id),
+      db.from('key_slots').select('*').eq('user_id', currentUser.id),
+      db.from('links').select('*')
+    ]);
+  if (nErr) { alert('Could not load your files: ' + nErr.message); return; }
+  keySlotsCache = slotRows || [];
+  allLinks = linkRows || [];
+
+  allNodes = [];
+  for (const row of (nodeRows || [])) {
+    let name = '(unreadable title)';
+    try { name = await decryptWith(navKey, row.name_cipher); } catch {}
+    allNodes.push({
+      id: row.id, parent_id: row.parent_id, type: row.type,
+      name, key_slot_id: row.key_slot_id, content_cipher: row.content_cipher,
+      sort_order: row.sort_order || 0
+    });
+  }
+}
+
+function isSlotUnlocked(slotId){
+  return !slotId || !!unlockedSlots[slotId];
+}
+function keyForSlot(slotId){
+  return slotId ? unlockedSlots[slotId] : mainKey;
+}
+
+// ─── Tree rendering ─────────────────────────────────────────────────────────
+function breadcrumbChain(){
+  const chain = [];
+  let id = currentFolderId;
+  while (id) {
+    const node = allNodes.find(n => n.id === id);
+    if (!node) break;
+    chain.unshift(node);
+    id = node.parent_id;
+  }
+  return chain;
+}
+
+function renderBreadcrumb(){
+  const chain = breadcrumbChain();
+  let html = `<span class="crumb" onclick="navigateTo(null)"><i class="ti ti-home"></i> Root</span>`;
+  for (const node of chain) {
+    html += `<span class="sep">/</span><span class="crumb" onclick="navigateTo('${node.id}')">${escapeHtml(node.name)}</span>`;
+  }
+  $('breadcrumb').innerHTML = html;
+}
+
+function navigateTo(folderId){
+  // A fresh navigation (not back/forward) truncates any forward history and pushes a new entry
+  navHistory = navHistory.slice(0, navIndex + 1);
+  navHistory.push(folderId);
+  navIndex = navHistory.length - 1;
+  currentFolderId = folderId;
+  closeModal();
+  openNodeId = null;
+  renderTree();
+}
+
+function goBack(){
+  if (navIndex === 0) return;
+  navIndex -= 1;
+  currentFolderId = navHistory[navIndex];
+  closeModal();
+  openNodeId = null;
+  renderTree();
+}
+
+function goForward(){
+  if (navIndex >= navHistory.length - 1) return;
+  navIndex += 1;
+  currentFolderId = navHistory[navIndex];
+  closeModal();
+  openNodeId = null;
+  renderTree();
+}
+
+function updateNavButtons(){
+  $('navBackBtn').disabled = navIndex === 0;
+  $('navForwardBtn').disabled = navIndex >= navHistory.length - 1;
+}
+
+function renderTree(){
+  renderBreadcrumb();
+  updateNavButtons();
+  const list = $('treeList');
+  const children = allNodes
+    .filter(n => (n.parent_id || null) === (currentFolderId || null))
+    .sort((a,b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
+
+  if (children.length === 0) {
+    list.innerHTML = `<p class="muted">Nothing here yet.</p>`;
+    return;
+  }
+
+  list.innerHTML = '';
+  for (const node of children) {
+    const div = document.createElement('div');
+    div.className = 'node-item';
+    div.title = node.name;
+    const isFolder = node.type === 'folder';
+    const locked = !isSlotUnlocked(node.key_slot_id);
+    const isHighlighted = node.id === highlightNodeId;
+    if (isHighlighted) div.classList.add('highlight');
+    div.innerHTML = `
+      <div class="n-actions">
+        <span class="n-action" title="Rename"><i class="ti ti-pencil"></i></span>
+        <span class="n-action" title="Delete"><i class="ti ti-trash"></i></span>
+      </div>
+      ${locked ? '<i class="ti ti-lock n-lock" title="Locked section"></i>' : ''}
+      <i class="ti ${isFolder ? 'ti-folder folder' : 'ti-file-text'} n-icon"></i>
+      <span class="n-name">${escapeHtml(node.name)}</span>
+    `;
+    const nameSpan = div.querySelector('.n-name');
+
+    // The tile-wide highlight fades away the moment the mouse touches it
+    div.addEventListener('mouseenter', () => {
+      if (div.classList.contains('highlight')) div.classList.remove('highlight');
+      if (nameSpan.classList.contains('highlight-text')) nameSpan.classList.remove('highlight-text');
+      if (highlightNodeId === node.id) highlightNodeId = null;
+    });
+
+    div.onclick = (e) => {
+      if (e.target.closest('.n-actions')) return;
+      // Clicking a still-highlighted tile swaps the highlight onto just the label text,
+      // which itself fades out the next time the mouse touches this tile.
+      if (div.classList.contains('highlight')) {
+        div.classList.remove('highlight');
+        nameSpan.classList.add('highlight-text');
+      }
+      if (isFolder) navigateTo(node.id);
+      else openFile(node.id);
+    };
+    const actions = div.querySelectorAll('.n-action');
+    actions[0].onclick = (e) => { e.stopPropagation(); renameNode(node); };
+    actions[1].onclick = (e) => { e.stopPropagation(); deleteNode(node); };
+    list.appendChild(div);
+  }
+}
+
+// ─── Create / rename / delete ───────────────────────────────────────────────
+function currentFolderKeySlot(){
+  if (!currentFolderId) return null;
+  const f = allNodes.find(n => n.id === currentFolderId);
+  return f ? f.key_slot_id : null;
+}
+
+async function promptCreate(type){
+  if (type === 'file') { openCreateFileModal(); return; }
+
+  const name = prompt('Name for the new folder:');
+  if (!name || !name.trim()) return;
+  const inheritedSlot = currentFolderKeySlot();
+
+  const name_cipher = await encryptWith(navKey, name.trim());
+  const row = {
+    user_id: currentUser.id,
+    parent_id: currentFolderId,
+    type: 'folder',
+    name_cipher,
+    key_slot_id: inheritedSlot,
+    content_cipher: null
+  };
+  const { error } = await db.from('nodes').insert(row);
+  if (error) { alert('Could not create: ' + error.message); return; }
+  await refreshEverything();
+  renderTree();
+}
+
+function openCreateFileModal(){
+  const inheritedSlot = currentFolderKeySlot();
+  if (inheritedSlot && !isSlotUnlocked(inheritedSlot)) {
+    alert("This folder's section is locked — unlock it before adding files here.");
+    return;
+  }
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box modal-box-lg">
+        <div class="viewer-title"><i class="ti ti-file-plus"></i> New file</div>
+        <label for="newFileName">Name</label>
+        <input type="text" id="newFileName" placeholder="File name" />
+        <label for="newFileContent">Contents</label>
+        <p class="muted" style="margin-bottom:8px;">Use [[Title]] to link another file, anywhere in your tree.</p>
+        <textarea id="newFileContent" placeholder="Start writing…"></textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary small" id="createFileBtn"><i class="ti ti-device-floppy"></i> Create file</button>
+          <button class="btn small" id="cancelCreateFileBtn">Cancel</button>
+        </div>
+        <div class="status" id="createFileStatus"></div>
+      </div>
+    </div>
+  `;
+  $('cancelCreateFileBtn').onclick = closeModal;
+  $('createFileBtn').onclick = () => createFileFromModal(inheritedSlot);
+  $('newFileName').focus();
+}
+
+async function createFileFromModal(inheritedSlot){
+  const name = $('newFileName').value.trim();
+  const content = $('newFileContent').value;
+  if (!name) { setStatus('createFileStatus', warn('Give the file a name first.')); return; }
+
+  setStatus('createFileStatus', '<span class="badge badge-warn"><i class="ti ti-loader"></i> Creating…</span>');
+  try {
+    const name_cipher = await encryptWith(navKey, name);
+    const content_cipher = await encryptWith(keyForSlot(inheritedSlot), content);
+    const { data: newRow, error } = await db.from('nodes').insert({
+      user_id: currentUser.id,
+      parent_id: currentFolderId,
+      type: 'file',
+      name_cipher,
+      key_slot_id: inheritedSlot,
+      content_cipher
+    }).select().single();
+    if (error) throw error;
+
+    // Resolve any [[wiki links]] typed into the new file, same as a normal save
+    const matches = [...content.matchAll(/\[\[(.+?)\]\]/g)].map(m => m[1].trim());
+    const uniqueTitles = [...new Set(matches)];
+    const newLinkRows = [];
+    for (const title of uniqueTitles) {
+      const target = allNodes.find(n => n.type === 'file' && n.name.toLowerCase() === title.toLowerCase());
+      if (target) newLinkRows.push({ source_id: newRow.id, target_id: target.id, label: title });
+    }
+    if (newLinkRows.length) {
+      const { error: linkErr } = await db.from('links').insert(newLinkRows);
+      if (linkErr) throw linkErr;
+    }
+
+    await refreshEverything();
+    closeModal();
+    renderTree();
+  } catch (e) {
+    setStatus('createFileStatus', err(e.message));
+  }
+}
+
+async function renameNode(node){
+  const name = prompt('New name:', node.name);
+  if (!name || !name.trim()) return;
+  const name_cipher = await encryptWith(navKey, name.trim());
+  const { error } = await db.from('nodes').update({ name_cipher }).eq('id', node.id).eq('user_id', currentUser.id);
+  if (error) { alert('Rename failed: ' + error.message); return; }
+  await refreshEverything();
+  renderTree();
+}
+
+async function deleteNode(node){
+  const msg = node.type === 'folder'
+    ? `Delete "${node.name}" and everything inside it? This cannot be undone.`
+    : `Delete "${node.name}"? This cannot be undone.`;
+  if (!confirm(msg)) return;
+  const { error } = await db.from('nodes').delete().eq('id', node.id).eq('user_id', currentUser.id);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  if (openNodeId === node.id) { closeModal(); openNodeId = null; }
+  await refreshEverything();
+  renderTree();
+}
+
+// ─── Locking a folder under a new key slot ─────────────────────────────────
+function descendantIds(folderId){
+  const ids = [];
+  const stack = [folderId];
+  while (stack.length) {
+    const id = stack.pop();
+    for (const n of allNodes.filter(n => n.parent_id === id)) {
+      ids.push(n.id);
+      if (n.type === 'folder') stack.push(n.id);
+    }
+  }
+  return ids;
+}
+
+async function promptLockCurrentFolder(){
+  if (!currentFolderId) { alert('Open a folder first, then lock that folder.'); return; }
+  const folder = allNodes.find(n => n.id === currentFolderId);
+  if (folder.key_slot_id) { alert('This folder is already under a locked section.'); return; }
+
+  const label = prompt('Name this locked section (e.g. "Book 2 Spoilers"):', folder.name);
+  if (!label) return;
+  if (!confirm('This downloads a new key file for this section. Anyone without that file will never be able to read what\'s inside, including you if you lose it. Continue?')) return;
+
+  try {
+    const newKey = await genKey();
+    await downloadKey(newKey, label.replace(/\s+/g,'-').toLowerCase() + '-key.txt');
+    const verifier = await makeVerifier(newKey);
+    const { data: slotRow, error: slotErr } = await db
+      .from('key_slots')
+      .insert({ user_id: currentUser.id, label, verifier })
+      .select()
+      .single();
+    if (slotErr) throw slotErr;
+
+    const newSlotId = slotRow.id;
+    unlockedSlots[newSlotId] = newKey; // they just made it, so it's unlocked this session
+
+    // Re-encrypt this folder's own tag, plus every descendant file's content, under the new key.
+    const ids = [folder.id, ...descendantIds(folder.id)];
+    for (const id of ids) {
+      const node = allNodes.find(n => n.id === id);
+      const update = { key_slot_id: newSlotId };
+      if (node.type === 'file') {
+        const oldKey = keyForSlot(node.key_slot_id); // old slot, before we overwrite it below
+        const plaintext = await decryptWith(oldKey, node.content_cipher);
+        update.content_cipher = await encryptWith(newKey, plaintext);
+      }
+      const { error } = await db.from('nodes').update(update).eq('id', id).eq('user_id', currentUser.id);
+      if (error) throw error;
+    }
+
+    await refreshEverything();
+    renderTree();
+    alert(`"${label}" is now locked under its own key.`);
+  } catch (e) {
+    alert('Locking failed: ' + e.message);
+  }
+}
+
+async function unlockSlotFlow(slotId){
+  const slot = keySlotsCache.find(s => s.id === slotId);
+  if (!slot) return false;
+  try {
+    const file = await askForKeyFile(`Unlock "${slot.label}"`, 'Choose the key file for this section.');
+    const key = await importKeyFromFile(file);
+    const good = await checkVerifier(key, slot.verifier);
+    if (!good) { alert('That key file doesn\'t match this section.'); return false; }
+    unlockedSlots[slotId] = key;
+    return true;
+  } catch { return false; } // cancelled
+}
+
+// ─── Viewing / editing a file ───────────────────────────────────────────────
+async function openFile(nodeId){
+  const node = allNodes.find(n => n.id === nodeId);
+  if (!node) return;
+  openNodeId = nodeId;
+
+  if (!isSlotUnlocked(node.key_slot_id)) {
+    const unlocked = await unlockSlotFlow(node.key_slot_id);
+    renderTree();
+    if (!unlocked) return;
+  }
+
+  let text = '';
+  try { text = await decryptWith(keyForSlot(node.key_slot_id), node.content_cipher); }
+  catch (e) { alert('Could not decrypt this file: ' + e.message); return; }
+
+  renderViewer(node, text);
+}
+
+function renderViewer(node, text){
+  const backlinkRows = allLinks.filter(l => l.target_id === node.id);
+  const backlinkNames = backlinkRows
+    .map(l => allNodes.find(n => n.id === l.source_id))
+    .filter(Boolean);
+
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay" id="viewerOverlay">
+      <div class="modal-box modal-box-lg">
+        <div class="viewer-title"><i class="ti ti-file-text"></i> ${escapeHtml(node.name)}</div>
+        <div class="viewer-body" id="viewerBody">${renderWikiLinks(text)}</div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn small" id="editBtn"><i class="ti ti-pencil"></i> Edit</button>
+          <button class="btn small" id="closeViewerBtn">Close</button>
+        </div>
+        <div class="backlinks" id="backlinksArea">
+          ${backlinkNames.length ? 'Mentioned in: ' + backlinkNames.map(n => `<span class="bl-item" onclick="navigateToNode('${n.id}')">${escapeHtml(n.name)}</span>`).join('') : ''}
+        </div>
+      </div>
+    </div>
+  `;
+  document.querySelectorAll('#viewerOverlay .wiki-link[data-target]').forEach(span => {
+    span.onclick = () => navigateToNode(span.dataset.target);
+  });
+  $('editBtn').onclick = () => renderEditor(node, text);
+  $('closeViewerBtn').onclick = () => { closeModal(); openNodeId = null; };
+  // Clicking the dark overlay itself (not the box) closes it, same as other modals
+  $('viewerOverlay').onclick = (e) => { if (e.target.id === 'viewerOverlay') { closeModal(); openNodeId = null; } };
+}
+
+function renderWikiLinks(text){
+  const escaped = escapeHtml(text);
+  return escaped.replace(/\[\[(.+?)\]\]/g, (match, rawTitle) => {
+    const title = rawTitle.trim();
+    const target = allNodes.find(n => n.type === 'file' && n.name.toLowerCase() === title.toLowerCase());
+    if (!target) return `<span class="wiki-link redlink" title="This page doesn't exist yet">[[${escapeHtml(title)}]]</span>`;
+    const locked = !isSlotUnlocked(target.key_slot_id);
+    return `<span class="wiki-link${locked ? ' locked' : ''}" data-target="${target.id}">${locked ? '🔒 ' : ''}${escapeHtml(title)}</span>`;
+  });
+}
+
+function renderEditor(node, text){
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box modal-box-lg">
+        <div class="viewer-title"><i class="ti ti-pencil"></i> Editing: ${escapeHtml(node.name)}</div>
+        <p class="muted" style="margin-bottom:8px;">Use [[Title]] to link another file, anywhere in your tree.</p>
+        <textarea id="editorArea">${escapeHtml(text)}</textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn primary small" id="saveBtn"><i class="ti ti-device-floppy"></i> Save</button>
+          <button class="btn small" id="cancelEditBtn">Cancel</button>
+        </div>
+        <div class="status" id="editStatus"></div>
+      </div>
+    </div>
+  `;
+  $('saveBtn').onclick = () => saveFile(node);
+  $('cancelEditBtn').onclick = () => openFile(node.id);
+}
+
+async function saveFile(node){
+  const text = $('editorArea').value;
+  setStatus('editStatus', '<span class="badge badge-warn"><i class="ti ti-loader"></i> Saving…</span>');
+  try {
+    const content_cipher = await encryptWith(keyForSlot(node.key_slot_id), text);
+    const { error } = await db.from('nodes')
+      .update({ content_cipher, updated_at: new Date().toISOString() })
+      .eq('id', node.id).eq('user_id', currentUser.id);
+    if (error) throw error;
+
+    // Re-resolve wiki links: delete old, insert new
+    await db.from('links').delete().eq('source_id', node.id);
+    const matches = [...text.matchAll(/\[\[(.+?)\]\]/g)].map(m => m[1].trim());
+    const uniqueTitles = [...new Set(matches)];
+    const newLinkRows = [];
+    for (const title of uniqueTitles) {
+      const target = allNodes.find(n => n.type === 'file' && n.name.toLowerCase() === title.toLowerCase());
+      if (target) newLinkRows.push({ source_id: node.id, target_id: target.id, label: title });
+    }
+    if (newLinkRows.length) {
+      const { error: linkErr } = await db.from('links').insert(newLinkRows);
+      if (linkErr) throw linkErr;
+    }
+
+    await refreshEverything();
+    openFile(node.id);
+  } catch (e) {
+    setStatus('editStatus', err(e.message));
+  }
+}
+
+// ─── Search ─────────────────────────────────────────────────────────────────
+function openSearchModal(){
+  $('modalRoot').innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h1><i class="ti ti-search"></i> Search</h1>
+        <p class="subtitle">This decrypts and searches everything you currently hold the keys for. Locked sections aren't searched — only their titles are checked. This may take a moment depending on how much you've written.</p>
+        <input type="text" id="searchInput" placeholder="Search your notes…" />
+        <div class="row">
+          <button class="btn primary" id="searchGoBtn"><i class="ti ti-search"></i> Search</button>
+          <button class="btn" id="searchCloseBtn">Close</button>
+        </div>
+        <div id="searchResults"></div>
+      </div>
+    </div>`;
+  $('searchCloseBtn').onclick = closeModal;
+  $('searchGoBtn').onclick = runSearch;
+  $('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+}
+
+async function runSearch(){
+  const term = $('searchInput').value.trim().toLowerCase();
+  if (!term) return;
+  $('searchResults').innerHTML = '<p class="muted">Searching…</p>';
+
+  const results = [];
+  for (const node of allNodes.filter(n => n.type === 'file')) {
+    const titleMatch = node.name.toLowerCase().includes(term);
+    const unlocked = isSlotUnlocked(node.key_slot_id);
+
+    if (unlocked) {
+      let bodyMatch = false;
+      try {
+        const body = await decryptWith(keyForSlot(node.key_slot_id), node.content_cipher);
+        bodyMatch = body.toLowerCase().includes(term);
+      } catch {}
+      if (titleMatch || bodyMatch) results.push({ node, matchedIn: bodyMatch ? 'body' : 'title', locked: false });
+    } else if (titleMatch) {
+      results.push({ node, matchedIn: 'title', locked: true });
+    }
+  }
+
+  if (!results.length) {
+    $('searchResults').innerHTML = '<p class="muted">No matches.</p>';
+    return;
+  }
+  $('searchResults').innerHTML = results.map(r => `
+    <div class="node-item" data-id="${r.node.id}">
+      <i class="ti ${r.locked ? 'ti-lock' : 'ti-file-text'} n-icon"></i>
+      <span class="n-name">${escapeHtml(r.node.name)}</span>
+      <span class="muted">${r.locked ? 'title match, locked' : r.matchedIn + ' match'}</span>
+    </div>
+  `).join('');
+  $('searchResults').querySelectorAll('.node-item').forEach(el => {
+    el.onclick = () => { closeModal(); navigateToNode(el.dataset.id); };
+  });
+}
+
+function navigateToNode(nodeId){
+  const node = allNodes.find(n => n.id === nodeId);
+  if (!node) return;
+  navigateTo(node.parent_id);   // closes any open popup, redirects the grid, re-renders
+  highlightNodeId = nodeId;
+  renderTree();                  // one more pass so the highlight class is actually applied
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+(async function init(){
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await afterSignIn();
+  }
+})();
+</script>
+</body>
+</html>
